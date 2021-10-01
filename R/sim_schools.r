@@ -4,6 +4,7 @@ library("here")
 library("data.table")
 library("ggplot2")
 library("dplyr")
+library("tidyr")
 
 alpha <- 0.8 # rate of imporation (scaled by prevalence)
 beta <- 7.0  # SAR of infected pupil at school
@@ -62,19 +63,27 @@ bi <-
 
 summary(bi)
 
-params <- bi_read(bi, type = "param")
-
-## plot histograms and true values
-traces <- params %>%
-  bind_rows(.id = "param")
+params <- get_traces(bi)
+lp <- params %>%
+  mutate(id = 1:n()) %>%
+  pivot_longer(-id, names_to = "param")
 
 true_values <- tibble(param = c("alpha", "beta"),
                       value = c(alpha, beta))
 
-p <- ggplot(traces, aes(x = value)) +
+p <- ggplot(lp, aes(x = value)) +
   geom_histogram(bins = 20) +
   geom_vline(data = true_values, aes(xintercept = value)) +
   facet_wrap(~ param, scales = "free_x") +
   theme_minimal() +
   xlab("Value") +
   ylab("Count")
+
+p
+
+## pairs plot
+p <- ggplot(params, aes(x = alpha, y = beta)) +
+  geom_jitter() +
+  theme_minimal()
+
+p
