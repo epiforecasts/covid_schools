@@ -84,6 +84,8 @@ p
 ## pairs plot
 p <- ggplot(params, aes(x = alpha, y = beta)) +
   geom_jitter() +
-  theme_minimal()
+  theme_minimal() +
+  geom_hline(yintercept = beta) +
+  geom_vline(xintercept = alpha)
 
 p
