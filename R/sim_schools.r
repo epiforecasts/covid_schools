@@ -3,6 +3,7 @@ library("rbi.helpers")
 library("here")
 library("data.table")
 library("ggplot2")
+library("dplyr")
 
 alpha <- 0.8 # rate of imporation (scaled by prevalence)
 beta <- 7.0  # SAR of infected pupil at school
@@ -38,42 +39,42 @@ model <- bi_model(here::here("inst", "bi", "model.bi"))
 
 bi <- libbi(model)
 
+n_schools <- 100
 
-#bi <- simulate(model, 
-#               nsamples = 5, 
-#               end_time = 1, 
-#               noutputs = 1, 
-#               input=list(
-#                 observations = data.frame(s = 1:100, value = observations),
-#                 sample = data.frame(s = 1:100, value = sample_size),
-#                 prev = data.frame(s = 1:100, value = prev),
-#                 school_size = data.frame(s = 1:100,value = school_size)
-#               ))
-#
-#
-#obsdata <- bi_generate_dataset(model, end_time=1, noutputs=2)
+input <- list(
+  sample = data.frame(s = 0:(n_schools - 1), value = sample_size[1:n_schools]),
+  prev = data.frame(s = 0:(n_schools - 1), value = prev[1:n_schools]),
+  prev_past = data.frame(s = 0:(n_schools - 1), value = prev_past[1:n_schools]),
+  school_size = data.frame(s = 0:(n_schools - 1),value = school_size[1:n_schools])
+)
 
-bi_prior <- sample(bi, target = "prior", nsamples = 100, end_time = 1, noutputs = 1,
-                   input = list(
-                     sample = data.frame(s = 0:99, value = sample_size),
-                     prev = data.frame(s = 0:99, value = prev),
-                     prev_past = data.frame(s = 0:99, value = prev_past),
-                     school_size = data.frame(s = 0:99,value = school_size)),
-                   verbose = TRUE)
+obs <- list(
+  detected = data.frame(s = 0:(n_schools - 1),
+                        time = rep(1, n_schools),
+                        value = observations[1:n_schools])
+)
 
-bi <- sample(bi_prior, target = "posterior", nparticles = 32,
-             obs = list(detected = data.frame(s = 0:99, time = rep(1,100),
-                                              value = observations)),
-             input=list(
-               sample = data.frame(s = 0:99, value = sample_size),
-               prev = data.frame(s = 0:99, value = prev),
-               prev_past = data.frame(s = 0:99, value = prev_past),
-               school_size = data.frame(s = 0:99,value = school_size)))
+bi <-
+  sample(bi, proposal = "prior", nsamples = 100, end_time = 1, noutputs = 1,
+         input = input, obs = obs, verbose = TRUE) %>%
+  adapt_proposal(min = 0.1, max = 0.3) %>%
+  sample(nsamples = 10000, verbose = TRUE)
 
-
-posterior <- bi_read(bi)
 summary(bi)
 
-library('coda')
-traces <- mcmc(get_traces(bi))
-plot(traces)
+params <- bi_read(bi, type = "param")
+
+## plot histograms and true values
+traces <- params %>%
+  bind_rows(.id = "param")
+
+true_values <- tibble(param = c("alpha", "beta"),
+                      value = c(alpha, beta))
+
+p <- ggplot(traces, aes(x = value)) +
+  geom_histogram(bins = 20) +
+  geom_vline(data = true_values, aes(xintercept = value)) +
+  facet_wrap(~ param, scales = "free_x") +
+  theme_minimal() +
+  xlab("Value") +
+  ylab("Count")
