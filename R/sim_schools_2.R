@@ -18,7 +18,7 @@ school_size <- round(abs(rnorm(nschools,mean <- 300, sd=50)))
 sample_size <- rep(40, nschools)
 
 
-model <- bi_model('~/Documents/WORK/Analyses/covid_schools/inst/bi/model.bi')
+model <- bi_model(here::here("inst", "bi", "model.bi")
 
 obsdata <- bi_generate_dataset(model %>% fix(alpha = 0.8, beta = 4.), end_time=1, noutputs=1,
                                input = list(
