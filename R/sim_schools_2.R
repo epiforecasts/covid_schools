@@ -9,7 +9,7 @@ library("coda")
 library("patchwork")
 
 
-nschools = 15
+nschools = 10
 
 prev <- abs(rnorm(nschools,mean <- 0.03, sd=0.01))
 prev_past <- abs(rnorm(nschools,mean <- 0.003, sd=0.001))
