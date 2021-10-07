@@ -1,29 +1,42 @@
+
 model schools {
   // Inputs
-  const observations = 2;     // number of positive tests in SIS wave
-  const sample = 40;          // total number of pupils tested in SIS wave
-  const prev = 0.02;          // prevalence in community
-  const school_size = 300;    // number of pupils in school
+  dim s(10)
+  input sample[s];          // total number of pupils tested in SIS wave
+  input prev[s];          // prevalence in community
+  input prev_past[s];          // prevalence in community
+
+  input school_size[s];    // number of pupils in school
 
   param alpha;                // rate of imporation (scaled by prevalence)
   param beta;                 // SAR of infected pupil at school
 
-  noise imports;
-  noise in_school_cases;
+  //noise imports[s];
+  noise imports_past[s];
+  //noise in_school_cases[s];
+  noise cases[s];
 
-  obs detected;
+  obs detected[s];
 
   sub parameter {
-    alpha ~ uniform(0, 1);
-    beta ~ uniform(0, 1);
+    alpha ~ truncated_gaussian(0.4, 0.8, lower=0);
+    beta ~ truncated_gaussian(4, 3, lower=0);
   }
 
   sub transition {
-    imports ~ poisson(alpha * prev * school_size); // simulated number of imports
-    in_school_cases ~ poisson(imports * beta);       // simulated number of secondary cases in school
+    imports_past[s] ~ poisson(alpha * prev_past[s] * school_size[s]); // simulated number of imports
+    cases[s] ~ poisson(imports_past[s] * beta + alpha * prev[s] * school_size[s])
   }
 
   sub observation {
-    detected ~ binomial(sample, (imports + in_school_cases) / school_size)
+    detected[s] ~ binomial(sample[s], cases[s]/school_size[s]);
   }
+  
+  sub proposal_parameter {
+    alpha ~ truncated_gaussian(alpha, 0.2, lower=0, upper=2); // local proposal
+    alpha ~ truncated_gaussian(0.5, 0.2, lower=0, upper=2); // independent proposal
+    beta ~ truncated_gaussian(beta, 0.5, lower=0, upper=15); // local proposal
+    beta ~ truncated_gaussian(5, 1.0, lower=0,  upper=15); // independent proposal
+  }
+
 }
